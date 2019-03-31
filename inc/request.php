@@ -79,11 +79,10 @@ function fn_CURLOPT_HEADERFUNCTION($ch, $str) {
 
 /**
  * @param Upstream $upstream
- * @param string $type
  * @param string $ARGS
- * @return void
+ * @return resource
  */
-function makeRequest(Upstream $upstream, $ARGS) {
+function create_direct_connect(Upstream $upstream, $ARGS) {
 	$ch = create_request($upstream->type(), appendArgs($upstream->requestUri(), $ARGS));
 	
 	curl_setopt($ch, CURLOPT_ENCODING, "");
@@ -94,11 +93,16 @@ function makeRequest(Upstream $upstream, $ARGS) {
 	$headers[] = "cache-control: " . get_server('HTTP_CACHE_CONTROL');
 	curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 	
-	exec_request($ch);
+	return $ch;
 }
 
-function exec_request($ch) {
+function exec_request($ch, $return = false) {
 	http_response_code(200);
+	
+	if ($return) {
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+	}
+	
 	
 	$ret = curl_exec($ch);
 	

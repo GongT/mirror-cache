@@ -52,4 +52,12 @@ abstract class Upstream {
 		return 'http://127.0.0.1:22222/fetch-upstream?' .
 			str_replace('%2F', '/', http_build_query($opt, null, '&', PHP_QUERY_RFC3986));
 	}
+	
+	public function handleSpecial() {
+		fatalError("Should implement handleSpecial");
+	}
+	
+	public function isSpecial() {
+		return false;
+	}
 }

@@ -9,7 +9,9 @@ $upstream = loadDomain($type, '/' . $url);
 
 header('Content-Type: text/html; charset=utf-8');
 
-if ($upstream->shouldCache()) {
+if ($upstream->isSpecial()) {
+	echo "<h1>This request is special</h1>";
+} elseif ($upstream->shouldCache()) {
 	echo "<h1>This request will be cached</h1>";
 	$target = $upstream->build_proxy_url();
 	echo "<h1>Request will send to: $target</h1>";

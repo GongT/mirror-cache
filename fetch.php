@@ -9,4 +9,5 @@ $ARGS = get_get('qs', '');
 
 $upstream = loadDomain($TYPE, $URL);
 
-makeRequest($upstream, $ARGS);
+$ch = create_direct_connect($upstream, $ARGS);
+exec_request($ch);

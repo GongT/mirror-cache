@@ -7,7 +7,11 @@ list($type, $url) = explode('/', ltrim($_SERVER['PATH_INFO'], '/'), 2);
 
 $upstream = loadDomain($type, '/' . $url);
 
-if ($upstream->shouldCache()) {
+if ($upstream->isSpecial()) {
+	header('X-GongT-Cache: special');
+	
+	$upstream->handleSpecial();
+} elseif ($upstream->shouldCache()) {
 	$target = $upstream->build_proxy_url();
 	
 	header('X-GongT-Cache: yes');
@@ -17,5 +21,6 @@ if ($upstream->shouldCache()) {
 } else {
 	header('X-GongT-Cache: direct');
 	// todo: etag & last-modify
-	makeRequest($upstream, $_SERVER['QUERY_STRING']);
+	$ch = create_direct_connect($upstream, $ARGS);
+	exec_request($ch);
 }
