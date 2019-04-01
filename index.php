@@ -21,6 +21,6 @@ if ($upstream->isSpecial()) {
 } else {
 	header('X-GongT-Cache: direct');
 	// todo: etag & last-modify
-	$ch = create_direct_connect($upstream, $ARGS);
+	$ch = create_direct_connect($upstream, $_SERVER['QUERY_STRING']);
 	exec_request($ch);
 }
