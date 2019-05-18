@@ -3,9 +3,19 @@
 
 abstract class Upstream {
 	/** @var  string */
-	protected $m_uri;
+	private $m_uri;
 	/** @var  string */
-	protected $m_domain;
+	private $m_domain;
+	
+	/**
+	 * @return string
+	 */
+	abstract public function type();
+	
+	/**
+	 * @return string[]
+	 */
+	protected abstract function getDomain();
 	
 	function __construct($path) {
 		$this->m_uri = $path;
@@ -22,12 +32,7 @@ abstract class Upstream {
 	/**
 	 * @return bool
 	 */
-	public abstract function shouldCache();
-	
-	/**
-	 * @return string[]
-	 */
-	protected abstract function getDomain();
+	public abstract function shouldForceCache();
 	
 	/** @return string */
 	public function requestUri() {
@@ -35,29 +40,56 @@ abstract class Upstream {
 	}
 	
 	/** @return  string */
-	public function uri() { return $this->m_uri; }
+	public function uri() {
+		return $this->m_uri;
+	}
+	
+	/**
+	 * @param string $qs
+	 * @return string
+	 */
+	public function originalUrl(string $qs) {
+		return appendArgs($this->requestUri(), $qs);
+	}
 	
 	/** @return  string */
-	public function domain() { return $this->m_domain; }
-	
-	abstract public function type();
-	
-	public function build_proxy_url() {
+	public function domain() {
+		return $this->m_domain;
+	}
+	public function toNginxPurgeUrl(string $qs) {
 		$opt = [
-			'type' => $this->type(),
-			'url' => $this->uri(),
-			'qs' => $_SERVER['QUERY_STRING'],
+			ARG_NAME_TYPE => $this->type(),
+			ARG_NAME_URL => $this->uri(),
+			ARG_NAME_QS => $qs,
 		];
 		
-		return 'http://127.0.0.1:22222/fetch-upstream?' .
+		return '/purge.php?' .
 			str_replace('%2F', '/', http_build_query($opt, null, '&', PHP_QUERY_RFC3986));
 	}
 	
-	public function handleSpecial() {
-		fatalError("Should implement handleSpecial");
+	public function toNginxProxiedUrl(string $qs) {
+		$opt = [
+			ARG_NAME_TYPE => $this->type(),
+			ARG_NAME_URL => $this->uri(),
+			ARG_NAME_QS => $qs,
+		];
+		
+		return '/fetch.php?' .
+			str_replace('%2F', '/', http_build_query($opt, null, '&', PHP_QUERY_RFC3986));
 	}
 	
-	public function isSpecial() {
-		return false;
+	
+	/**
+	 * @param CurlFetch $curl
+	 * @return boolean
+	 */
+	public abstract function needTransformBody(CurlFetch $curl);
+	
+	/**
+	 * @param CurlFetch $curl
+	 * @return string
+	 */
+	public function transformBody(CurlFetch $curl) {
+		throw new Error('Must implement transferBody');
 	}
 }

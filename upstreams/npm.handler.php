@@ -1,7 +1,14 @@
 <?php
 
 class npm extends Upstream {
-	public function shouldCache() {
+	private function isGettingPackageJson() {
+		return strpos(basename($this->uri()), '.') === false;
+	}
+	
+	public function shouldForceCache() {
+		if ($this->isGettingPackageJson()) {
+			return false;
+		}
 		return true;
 	}
 	
@@ -15,17 +22,12 @@ class npm extends Upstream {
 		return 'npm';
 	}
 	
-	public function isSpecial() {
-		$uri = $this->uri();
-		if (strpos(basename($uri), '.') === false) {
-			return true;
-		}
-		return false;
+	
+	public function transformBody(CurlFetch $curl) {
+		return str_replace('https://registry.npmjs.org', 'https://mirror.service.gongt.me:59443/npm', $curl->getResponseBody());
 	}
 	
-	public function handleSpecial() {
-		$ch = create_direct_connect($this, $_SERVER['QUERY_STRING']);
-		$ret = exec_request($ch, true);
-		echo str_replace('https://registry.npmjs.org', 'https://mirror.service.gongt.me:59443/npm', $ret);
+	public function needTransformBody(CurlFetch $curl) {
+		return $this->isGettingPackageJson();
 	}
 }

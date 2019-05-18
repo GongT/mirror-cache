@@ -2,7 +2,14 @@
 
 require 'const.php';
 require 'upstream.php';
-require 'request.php';
+require 'curlFetch.php';
+require 'cacheInformationLog.php';
+
+set_error_handler(function () {
+	
+	systemLogError('Error/Notice in request: ' . (isset($_SERVER['PATH_INFO']) ? $_SERVER['PATH_INFO'] : $_SERVER['QUERY_STRING']));
+	return false;
+}, E_ALL & ~E_NOTICE & ~E_USER_NOTICE);
 
 function &selectDomain(array $domainArray) {
 	$cnt = count($domainArray);
@@ -70,4 +77,16 @@ function appendArgs($url, $args) {
 	} else {
 		return $url;
 	}
+}
+
+function systemLogDebug(string $message) {
+	sd_journal_send('MESSAGE=' . $message, 'SYSLOG_IDENTIFIER=mirror', 'PRIORITY=6');
+}
+
+function systemLogError(string $message) {
+	sd_journal_send('MESSAGE=' . $message, 'SYSLOG_IDENTIFIER=mirror', 'PRIORITY=2');
+}
+
+function systemLogInfo(string $message) {
+	sd_journal_send('MESSAGE=' . $message, 'SYSLOG_IDENTIFIER=mirror', 'PRIORITY=4');
 }

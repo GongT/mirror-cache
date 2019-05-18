@@ -1,7 +1,7 @@
 <?php
 
 class yarn extends Upstream {
-	public function shouldCache() {
+	public function shouldForceCache() {
 		return true;
 	}
 	
@@ -13,6 +13,10 @@ class yarn extends Upstream {
 	
 	public function type() {
 		return 'yarn';
+	}
+	
+	public function needTransformBody(CurlFetch $curl) {
+		return false;
 	}
 }
 

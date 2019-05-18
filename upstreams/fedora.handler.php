@@ -2,7 +2,7 @@
 
 
 class fedora extends Upstream {
-	public function shouldCache() {
+	public function shouldForceCache() {
 		$uri = $this->uri();
 		if (preg_match('#/repodata/repomd.xml$#', $uri)) {
 			return false;
@@ -24,6 +24,10 @@ class fedora extends Upstream {
 	
 	public function type() {
 		return 'fedora';
+	}
+	
+	public function needTransformBody(CurlFetch $curl) {
+		return false;
 	}
 }
 
