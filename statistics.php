@@ -2,9 +2,6 @@
 
 require 'inc/lib.php';
 
-systemLogDebug('hello world');
-systemLogInfo(json_encode($_SERVER, JSON_PRETTY_PRINT));
-
 $cacheKey = isset($_SERVER['CACHE_KEY']) ? trim($_SERVER['CACHE_KEY'], ':') : '';
 
 $originalUri = isset($_SERVER['ORIGINAL_URI']) ? $_SERVER['ORIGINAL_URI'] : '';
