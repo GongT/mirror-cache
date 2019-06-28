@@ -24,9 +24,6 @@ class CurlFetch {
 		
 		curl_setopt($ch, CURLOPT_URL, $url);
 		
-		curl_setopt($ch, CURLOPT_PROXYTYPE, 7);
-		// CURLPROXY_SOCKS5 -> CURLPROXY_SOCKS5_HOSTNAME(7)
-		
 		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 		curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
 		
@@ -49,6 +46,8 @@ class CurlFetch {
 	
 	public function proxy($server) {
 		curl_setopt($this->ch, CURLOPT_PROXY, $server);
+		curl_setopt($this->ch, CURLOPT_PROXYTYPE, 7);
+		// CURLPROXY_SOCKS5 -> CURLPROXY_SOCKS5_HOSTNAME(7)
 	}
 	
 	public function useCookie($site) {

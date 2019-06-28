@@ -14,10 +14,10 @@ class fedora extends Upstream {
 //		return apcu_entry('fedora-mirror-list', 'fetch_new_list', 3600);
 		$uri = $this->uri();
 		if (preg_match('#/repodata/#', $uri)) {
-			return ['http://download.fedoraproject.org/pub/fedora/linux/'];
+			return ['https://download.nus.edu.sg/mirror/fedora/linux/'];
 		}
 		return [
-			'http://mirror.0x.sg/fedora/linux/',
+			'https://download.nus.edu.sg/mirror/fedora/linux/',
 			'http://my.fedora.ipserverone.com/fedora/linux/',
 			'https://mirror.hoster.kz/fedora/fedora/linux/',
 			'http://mirror.dhakacom.com/fedora/linux/',
