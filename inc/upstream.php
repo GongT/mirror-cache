@@ -56,6 +56,9 @@ abstract class Upstream {
 	public function domain() {
 		return $this->m_domain;
 	}
+	public function toOutsideNginxPurgeUrl(string $qs) {
+		return '/' . $this->type() . '/' . ltrim($this->uri(), '/') . '?' . $qs;
+	}
 	public function toNginxPurgeUrl(string $qs) {
 		$opt = [
 			ARG_NAME_TYPE => $this->type(),

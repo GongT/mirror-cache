@@ -24,7 +24,8 @@ class CurlFetch {
 		
 		curl_setopt($ch, CURLOPT_URL, $url);
 		
-		curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS5);
+		curl_setopt($ch, CURLOPT_PROXYTYPE, 7);
+		// CURLPROXY_SOCKS5 -> CURLPROXY_SOCKS5_HOSTNAME(7)
 		
 		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 		curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
@@ -126,13 +127,16 @@ class CurlFetch {
 		if ($this->receiveStatus) { // skip first time, it is HTTP 200 OK
 			$header = explode(':', $rawHeader, 2);
 			if (count($header) < 2) // ignore invalid headers
+			{
 				return strlen($rawHeader);
+			}
 			
 			$name = strtolower(trim($header[0]));
-			if (!array_key_exists($name, $this->responseHeaders))
+			if (!array_key_exists($name, $this->responseHeaders)) {
 				$this->responseHeaders[$name] = [trim($header[1])];
-			else
+			} else {
 				$this->responseHeaders[$name][] = trim($header[1]);
+			}
 			
 		} else {
 			$this->receiveStatus = true;
@@ -160,11 +164,18 @@ class CurlFetch {
 			http_response_code(200);
 		}
 		
-		$this->finishCurl();
+		if (curl_errno($this->ch)) {
+			systemLogError('CURL Fail: ' . curl_error($this->ch));
+			curl_close($this->ch);
+			return false;
+		}
+		curl_close($this->ch);
 		
 		if ($this->headerHandled && !$this->bodyHandled) {
 			$this->doPassHeader();
 		}
+		
+		return true;
 	}
 	
 	/**
@@ -175,20 +186,5 @@ class CurlFetch {
 			throw new Error('Response body has already been passed to browser, cannot get it.');
 		}
 		return $this->responseBody;
-	}
-	
-	private function finishCurl() {
-		if (curl_errno($this->ch)) {
-			systemLogError('CURL Fail: ' . curl_error($this->ch));
-			http_response_code(500);
-			echo('<h1>Error while run curl:' . curl_error($this->ch) . '</h1>');
-			echo('<pre>URL = ' . $this->url . '</pre>');
-			xdebug_var_dump(curl_getinfo($this->ch));
-			echo('Body:');
-			echo(htmlentities($this->responseBody));
-			die();
-		}
-		
-		curl_close($this->ch);
 	}
 }

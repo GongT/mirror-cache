@@ -4,7 +4,7 @@
 class fedora extends Upstream {
 	public function shouldForceCache() {
 		$uri = $this->uri();
-		if (preg_match('#/repodata/repomd.xml$#', $uri)) {
+		if (preg_match('#/repodata/#', $uri)) {
 			return false;
 		}
 		return true;
@@ -12,13 +12,17 @@ class fedora extends Upstream {
 	
 	protected function getDomain() {
 //		return apcu_entry('fedora-mirror-list', 'fetch_new_list', 3600);
+		$uri = $this->uri();
+		if (preg_match('#/repodata/#', $uri)) {
+			return ['http://download.fedoraproject.org/pub/fedora/linux/'];
+		}
 		return [
 			'http://mirror.0x.sg/fedora/linux/',
 			'http://my.fedora.ipserverone.com/fedora/linux/',
 			'https://mirror.hoster.kz/fedora/fedora/linux/',
 			'http://mirror.dhakacom.com/fedora/linux/',
 			'http://sg.fedora.ipserverone.com/fedora/linux/',
-			'https://ftp.yzu.edu.tw/Linux/Fedora/linux/',
+			# 'https://ftp.yzu.edu.tw/Linux/Fedora/linux/',
 		];
 	}
 	

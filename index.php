@@ -20,6 +20,5 @@ if ($purge === 'yes') {
 	$url = $upstream->toNginxProxiedUrl($_SERVER['QUERY_STRING']);
 }
 
-systemLogDebug("index.php: passing to: " . $url);
-http_response_code(200);
+systemLogDebug("index.php: internal redirect to: " . $url);
 header('X-Accel-Redirect: ' . $url);

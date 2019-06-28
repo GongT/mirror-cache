@@ -23,18 +23,44 @@ if ($upstream->shouldForceCache()) {
 	header('X-GongT-Cache-Type: force-save');
 	$curl->filterHttpCacheHeaders();
 } else {
-	systemLogInfo("fetch.php: nginx will cache (with timeout): type=$TYPE, url=" . $curl->getUrl());
+	systemLogInfo("fetch.php: nginx will cache (timeout from header): type=$TYPE, url=" . $curl->getUrl());
 	header('X-GongT-Cache-Type: parse-header');
 }
 
 if ($upstream->needTransformBody($curl)) {
 	systemLogDebug("fetch.php: the response will buffered in memory and parse after finish");
 	header('X-GongT-Cache-Transport: buffered');
-	$curl->exec();
-	echo $upstream->transformBody($curl);
+	$ok = $curl->exec();
+	if ($ok) {
+		echo $upstream->transformBody($curl);
+	} else {
+		http_response_code(500);
+		echo('<h1>Error while run curl:' . curl_error($this->ch) . '</h1>');
+		echo('<pre>URL = ' . $this->url . '</pre>');
+		xdebug_var_dump(curl_getinfo($this->ch));
+		echo('Body:');
+		echo(htmlentities($this->responseBody));
+	}
 } else {
 	systemLogDebug("fetch.php: the response will pipe to browser directly");
 	header('X-GongT-Cache-Transport: unbuffered');
 	$curl->passResponseBody();
-	$curl->exec();
+	$ok = $curl->exec();
+	if (!$ok) {
+		systemLogError('Finishing request');
+		fastcgi_finish_request();
+		systemLogError('Finished');
+		sleep(1);
+		$url = $upstream->toOutsideNginxPurgeUrl($ARGS);
+		systemLogError('Internal sending purge request: ' . $url);
+		$ch = curl_init();
+		curl_setopt($ch, CURLOPT_URL, $url);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		$ckfile = tempnam ("/tmp", "purge_cache=yes");
+		curl_setopt ($ch, CURLOPT_COOKIEJAR, $ckfile);
+
+		$data = curl_exec($ch);
+		systemLogError('Internal purge response: ' . $data);
+		curl_close($ch);
+	}
 }
