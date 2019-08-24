@@ -34,6 +34,8 @@ class CurlFetch {
 		
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 		
+//		curl_setopt($ch, CURLOPT_SSLVERSION, 3);
+		
 		return $ch;
 	}
 	

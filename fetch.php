@@ -46,6 +46,7 @@ for ($retry = 0; $retry < 5; $retry++) {
 		systemLogInfo("fetch.php: nginx will cache (timeout from header): type=$TYPE, url=" . $curl->getUrl());
 		header('X-GongT-Cache-Type: parse-header');
 	}
+	header('X-GongT-Cache-Source: '.$originalUrl);
 	
 	$ok = $curl->exec();
 	if ($ok) {

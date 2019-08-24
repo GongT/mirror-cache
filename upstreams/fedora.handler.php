@@ -11,7 +11,8 @@ class fedora extends Upstream {
 	}
 	
 	protected function getDomain() {
-//		return apcu_entry('fedora-mirror-list', 'fetch_new_list', 3600);
+		return apcu_entry('fedora-mirror-list', 'fetch_new_list', 3600);
+		/*
 		$uri = $this->uri();
 		if (preg_match('#/repodata/#', $uri)) {
 			return ['https://download.nus.edu.sg/mirror/fedora/linux/'];
@@ -22,8 +23,9 @@ class fedora extends Upstream {
 			'https://mirror.hoster.kz/fedora/fedora/linux/',
 			'http://mirror.dhakacom.com/fedora/linux/',
 			'http://sg.fedora.ipserverone.com/fedora/linux/',
-			# 'https://ftp.yzu.edu.tw/Linux/Fedora/linux/',
+			 'https://ftp.yzu.edu.tw/Linux/Fedora/linux/',
 		];
+		*/
 	}
 	
 	public function type() {
@@ -35,15 +37,19 @@ class fedora extends Upstream {
 	}
 }
 
-/*
 function fetch_new_list() {
-	$ch = create_request('fedora', 'https://mirrors.fedoraproject.org/metalink?arch=x86_64&repo=rawhide');
+	systemLogInfo("fedora: fetch new mirror list.");
+	$curl = new CurlFetch('https://mirrors.fedoraproject.org/metalink?arch=x86_64&repo=rawhide');
 	
-	curl_setopt($ch, CURLOPT_ENCODING, "");
-	curl_setopt($ch, CURLOPT_PROXY, PROXY);
-	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-	
-	$ret = exec_request($ch);
+	$curl->proxy(PROXY);
+	$ok = $curl->exec();
+	if ($ok) {
+		$ret = $curl->getResponseBody();
+	} else {
+		http_response_code(500);
+		systemLogError('fedora: cannot get mirror list file from ' . $curl->getUrl());
+		exit(0);
+	}
 	
 	$found = preg_match_all('#https?://.+/repomd\.xml#', $ret, $matches);
 	if (!$found) {
@@ -58,18 +64,32 @@ function fetch_new_list() {
 			
 			if (filter_blacklist(parse_url($host, PHP_URL_HOST))) {
 				$ret[] = $host;
+			}else{
+				systemLogInfo("Blacklist url: $url");
 			}
+		} else {
+			systemLogInfo("Ignore url: $url");
 		}
 	}
+	
+	systemLogInfo('fedora: mirrors to try: ' . implode('', array_map(function ($n) {
+			return "\n    * $n";
+		}, $ret)));
 	
 	return $ret;
 }
 
-$blackList = [
-	'mirror2.totbb.net'
-];
 function filter_blacklist($host) {
-	global $blackList;
-	return isset($blackList[$host]);
+	$blackList = [
+		'mirror2.totbb.net'
+	];
+	if (in_array($host, $blackList)) {
+		return false;
+	}
+	
+	if (strtolower(substr($host, -3)) === '.cn') {
+		return false;
+	}
+	return true;
 }
-*/
+
