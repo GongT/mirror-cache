@@ -20,7 +20,13 @@ function &selectDomain(array $domainArray) {
 }
 
 function normalizePath($p) {
-	return implode('/', array_filter(explode('/', str_replace('\\', '/', $p))));
+	$prefix = $p[0];
+	$po = implode('/', array_filter(explode('/', str_replace('\\', '/', $p))));
+	if ($prefix === '/' || $prefix === '\\') {
+		return '/' . $po;
+	} else {
+		return $po;
+	}
 }
 
 function makeCachePath($type, $url) {

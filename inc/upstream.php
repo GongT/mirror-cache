@@ -4,8 +4,6 @@
 abstract class Upstream {
 	/** @var  string */
 	private $m_uri;
-	/** @var  string */
-	private $m_domain;
 	
 	/**
 	 * @return string
@@ -19,7 +17,6 @@ abstract class Upstream {
 	
 	function __construct($path) {
 		$this->m_uri = $path;
-		$this->m_domain = selectDomain($this->getDomain());
 	}
 	
 	/**
@@ -36,7 +33,7 @@ abstract class Upstream {
 	
 	/** @return string */
 	public function requestUri() {
-		return rtrim($this->m_domain, '/') . '/' . ltrim($this->uri(), '/');
+		return rtrim(selectDomain($this->getDomain()), '/') . '/' . ltrim($this->uri(), '/');
 	}
 	
 	/** @return  string */
@@ -52,13 +49,10 @@ abstract class Upstream {
 		return appendArgs($this->requestUri(), $qs);
 	}
 	
-	/** @return  string */
-	public function domain() {
-		return $this->m_domain;
-	}
 	public function toOutsideNginxPurgeUrl(string $qs) {
 		return '/' . $this->type() . '/' . ltrim($this->uri(), '/') . '?' . $qs;
 	}
+	
 	public function toNginxPurgeUrl(string $qs) {
 		$opt = [
 			ARG_NAME_TYPE => $this->type(),

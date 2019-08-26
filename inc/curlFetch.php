@@ -14,8 +14,9 @@ class CurlFetch {
 	private $bodyHandled = false;
 	
 	private $responseHeaders = [];
-	private $responseBody;
 	private $requestHeaders = [];
+	private $bodyTmpPath = '';
+	private $bodyTmpFp = null;
 	
 	public function __construct($url) {
 		$this->url = $url;
@@ -32,11 +33,27 @@ class CurlFetch {
 		
 		curl_setopt($ch, CURLOPT_REFERER, get_server('HTTP_REFERER'));
 		
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		
+		$this->bodyTmpPath = sys_get_temp_dir() . '/mirror/';
+		$uriInfo = parse_url($url);
+		if (!empty($uriInfo['query'])) {
+			$this->bodyTmpPath .= crc32($uriInfo['query']) . '_';
+		}
+		$this->bodyTmpPath .= basename($uriInfo['path']);
+		$this->bodyTmpPath = normalizePath($this->bodyTmpPath);
 //		curl_setopt($ch, CURLOPT_SSLVERSION, 3);
 		
 		return $ch;
+	}
+	
+	public function __destruct() {
+		if ($this->bodyTmpFp) {
+			fclose($this->bodyTmpFp);
+			$this->bodyTmpFp = null;
+		}
+		if (file_exists($this->bodyTmpPath)) {
+//			systemLogError('the temp file is : ' . $this->bodyTmpPath);
+			unlink($this->bodyTmpPath);
+		}
 	}
 	
 	/**
@@ -73,12 +90,34 @@ class CurlFetch {
 		$this->headerHandled = true;
 	}
 	
+	private function _downloadResponseBody() {
+//		 systemLogInfo('download ' . $this->getUrl());
+//		 systemLogInfo('download file to ' . $this->bodyTmpPath);
+		
+		$d = dirname($this->bodyTmpPath);
+		if (!file_exists($d)) {
+//			systemLogInfo('Create directory: ' . $d);
+			mkdir($d);
+		}
+		
+		$this->bodyTmpFp = fopen($this->bodyTmpPath, 'w');
+		
+		curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, false);
+		curl_setopt($this->ch, CURLOPT_FILE, $this->bodyTmpFp);
+		
+		curl_exec($this->ch);
+		
+		fclose($this->bodyTmpFp);
+		$this->bodyTmpFp = null;
+	}
+	
 	public function passResponseBody() {
 		if ($this->bodyHandled) {
 			throw new Error('passResponseBody already called');
 		}
 		$this->bodyHandled = true;
 		$headerSent = false;
+		curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, true);
 		
 		curl_setopt($this->ch, CURLOPT_WRITEFUNCTION, function ($ch, $data) use (&$headerSent) {
 			if (!$headerSent) {
@@ -157,7 +196,11 @@ class CurlFetch {
 		
 		curl_setopt($this->ch, CURLOPT_HTTPHEADER, $this->requestHeaders);
 		
-		$this->responseBody = curl_exec($this->ch);
+		if ($this->bodyHandled) {
+			curl_exec($this->ch);
+		} else {
+			$this->_downloadResponseBody();
+		}
 		
 		if ($this->headerHandled) {
 			http_response_code(curl_getinfo($this->ch, CURLINFO_RESPONSE_CODE));
@@ -179,6 +222,10 @@ class CurlFetch {
 		return true;
 	}
 	
+	public function getResponseBodyFile() {
+		return $this->bodyTmpPath;
+	}
+	
 	/**
 	 * @return string
 	 */
@@ -186,6 +233,10 @@ class CurlFetch {
 		if ($this->bodyHandled) {
 			throw new Error('Response body has already been passed to browser, cannot get it.');
 		}
-		return $this->responseBody;
+		if (!file_exists($this->bodyTmpPath)) {
+			throw new Error('Response body not write to disk.');
+		}
+		
+		return file_get_contents($this->bodyTmpPath);
 	}
 }
