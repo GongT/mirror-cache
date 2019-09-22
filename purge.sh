@@ -1,21 +1,49 @@
 #!/bin/bash
 
-function each_line() {
-	L="${1: :-1}"
-	OIFS=$IFS
-	IFS=:
-	set -- $L
-	ARG_TYPE=$1
-	ARG_PATH=$2
-	shift
-	shift
-	ARG_QS="$*"
-	IFS=$OIFS
-	URL="/$ARG_TYPE$ARG_PATH?$ARG_QS"
-	echo -ne "purge: $URL \e[38;5;14m\n\t"
-	curl --silent -X PURGE -H 'Cookie: purge_cache=yes' -H 'Host: mirror.service.gongt.me' "127.0.0.1:59080$URL" | grep -oE '<title>.+</title>'
-	echo -e "\e[0m"
-}
-export -f each_line
+set -e
 
-awk '{print $2}' | xargs -n1 -IF bash -c "each_line 'F'"
+NGINX_CACHE_PATH="/var/cache/nginx/mirror_cache"
+
+function nxcacheof() {
+	local x=$(echo -n "$1" | md5sum)
+	echo "$NGINX_CACHE_PATH/${x:30:2}/${x:28:2}/${x:0:32}"
+}
+
+function each_line() {
+	local F="$1"
+	local P="$(nxcacheof "$1")"
+	echo -ne "purge \e[2m${F}\e[0m:"
+	if [[ -e "$P" ]]; then
+		if unlink "$P" ; then
+			echo -e "\e[38;5;10mOK!\e[0m"
+		else
+			echo -e "\e[38;5;9m - Failed!\e[0m"
+		fi
+	else
+		echo -e "\e[38;5;14mNot Found\e[0m[$P]"
+	fi
+}
+
+urldecode(){
+  echo -e "$(sed 's/+/ /g;s/%\(..\)/\\x\1/g;')"
+}
+
+if [[ $# -gt 0 ]] && [[ "$*" != "-n" ]]; then
+	LINES=( "$@" )
+else
+	LINES=( $( awk '{print $3}' | sort -u ) )
+fi
+
+if echo -- "$*" | grep -q -- "-n" ; then
+	for LINE in "${LINES[@]}" ; do
+		P="$(nxcacheof "$LINE")"
+		[[ -e "$P" ]] && echo "$P"
+	done
+	exit 0
+fi
+
+
+for LINE in "${LINES[@]}" ; do
+	each_line ${LINE} # "$(echo $LINE | urldecode)"
+done
+

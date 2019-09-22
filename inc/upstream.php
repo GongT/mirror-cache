@@ -30,6 +30,10 @@ abstract class Upstream {
 	 * @return bool
 	 */
 	public abstract function shouldForceCache();
+
+	public function shouldNotCache() {
+		return false;
+	}
 	
 	/** @return string */
 	public function requestUri() {

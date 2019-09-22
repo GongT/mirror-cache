@@ -6,6 +6,14 @@ class openwrt extends Upstream {
 		];
 	}
 	
+	function shouldNotCache() {
+		$uri = $this->uri();
+		if (preg_match('#snapshots\/#', $uri)) {
+			return true;
+		}
+		return false;
+	}
+
 	public function shouldForceCache() {
 		$uri = $this->uri();
 		if (preg_match('#Packages\.(gz|sig)$#i', $uri)) {

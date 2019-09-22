@@ -14,6 +14,10 @@ $purge = empty($_COOKIE['purge_cache']) ? 'no' : 'yes';
 $upstream = loadDomain($type, '/' . $url);
 systemLogDebug("index.php: got request: purge=$purge, type=$type, url=$url");
 
+#if ($_SERVER['REQUEST_METHOD'] === 'POST'){
+#
+#}
+
 if ($purge === 'yes') {
 	$url = $upstream->toNginxPurgeUrl($_SERVER['QUERY_STRING']);
 } else {

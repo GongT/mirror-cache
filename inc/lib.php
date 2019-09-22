@@ -33,12 +33,21 @@ function makeCachePath($type, $url) {
 	return normalizePath(implode('/', [CACHE_PATH, $type, $url]));
 }
 
+function addNeverCacheHeader() {
+	header('Cache-Control: no-cache, no-store, must-revalidate');
+	header('Pragma: no-cache');
+	header('Expires: 0');
+}
+
 /**
  * @param $why string
  */
 function fatalError($why) {
 	http_response_code(500);
-	echo "<h1>$why</h1>";
+	addNeverCacheHeader();
+	$req = isset($_SERVER['PATH_INFO']) ? $_SERVER['PATH_INFO'] : $_SERVER['QUERY_STRING'];
+	echo "<h1>$why</h1>$req";
+	systemLogError('Error/Notice in request: ' . $req . '. reason: ' . $why . '.');
 	die;
 }
 

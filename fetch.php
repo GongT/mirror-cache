@@ -19,7 +19,8 @@ function purgeInternal() {
 	$ch = curl_init();
 	curl_setopt($ch, CURLOPT_URL, $url);
 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-	$ckfile = tempnam("/tmp", "purge_cache=yes");
+	$ckfile = tempnam(sys_get_temp_dir(), "purge");
+	file_put_contents($ckfile, "purge_cache=yes");
 	curl_setopt($ch, CURLOPT_COOKIEJAR, $ckfile);
 	
 	$data = curl_exec($ch);
@@ -37,8 +38,12 @@ for ($retry = 0; $retry < 5; $retry++) {
 	
 	$curl->passResponseHeaders();
 	
-	header('X-GongT-Cache-Transport: buffered');
-	if ($upstream->shouldForceCache()) {
+	if ($upstream->shouldNotCache()) {
+		systemLogInfo("fetch.php: nginx will NOT cache: type=$TYPE, url=" . $curl->getUrl());
+		header('X-GongT-Cache-Type: never');
+		$curl->filterHttpCacheHeaders();
+		addNeverCacheHeader();
+	} elseif ($upstream->shouldForceCache()) {
 		systemLogInfo("fetch.php: nginx will cache (forever): type=$TYPE, url=" . $curl->getUrl());
 		header('X-GongT-Cache-Type: force-save');
 		$curl->filterHttpCacheHeaders();
@@ -50,40 +55,33 @@ for ($retry = 0; $retry < 5; $retry++) {
 	
 	$ok = $curl->exec();
 	if ($ok) {
-		
 		if ($upstream->needTransformBody($curl)) {
+			systemLogDebug("need body transform: " . $curl->getUrl());
 			$ret = $upstream->transformBody($curl);
 			
 			if (empty($ret)) {
 				http_response_code(500);
-				systemLogInfo('fetch.php: request complete, but got empty response. ' . $curl->getUrl());
+				systemLogError('fetch.php: transform body return empty. ' . $curl->getUrl());
 			} else {
 				header('Content-Length: ' . strlen($ret)); // must overwride old content-length, content is changed by us
+				http_response_code(200);
 				echo $ret;
 				systemLogInfo('fetch.php: request complete, data flushed (' . strlen($ret) . '). ' . basename($curl->getUrl()));
 				exit(0);
 			}
-			
 		} else {
+			systemLogDebug("do not need body transform:" . $curl->getUrl());
+			
 			// still need a way to cache download, otherwise nginx will cache interrupted response
 			$file = $curl->getResponseBodyFile();
-			if (!file_exists($file)) {
-				http_response_code(500);
-				systemLogError('fetch.php: request complete, but temp file does not exists. ' . $file);
-				exit(0);
-			}
 			$fsize = filesize($file);
-			if ($fsize === 0) {
-				http_response_code(500);
-				systemLogInfo('fetch.php: request complete, but got empty response file. ' . $file);
-			} else {
-				$fp = fopen($file, 'r');
-				fpassthru($fp);
-				fclose($fp);
-				systemLogInfo('fetch.php: request complete, file flushed (' . $fsize . '). ' . basename($curl->getUrl()));
-				exit(0);
-			}
-			
+			header('Content-Length: ' . $fsize);
+			http_response_code(200);
+			$fp = fopen($file, 'r');
+			fpassthru($fp);
+			fclose($fp);
+			systemLogInfo('fetch.php: request complete, file flushed [' . $fsize . '] - ' . basename($curl->getUrl()));
+			exit(0);
 		}
 	}
 	
@@ -93,11 +91,5 @@ for ($retry = 0; $retry < 5; $retry++) {
 }
 
 header('X-GongT-Cache-Type: error');
-systemLogError('fetch.php: failed after ' . ($retry + 1) . ' retry!');
+fatalError('fetch.php: failed after ' . ($retry + 1) . ' retry!');
 
-http_response_code(500);
-echo('<h1>Error while run curl:' . curl_error($this->ch) . '</h1>');
-echo('<pre>URL = ' . $curl->getUrl() . '</pre>');
-xdebug_var_dump(curl_getinfo($this->ch));
-echo('Body:');
-echo(htmlentities($this->responseBody));

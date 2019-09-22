@@ -8,10 +8,9 @@ class CurlFetch {
 	
 	private $handleCookie = false;
 	private $receiveStatus = false;
-	private $headerHandled = false;
+	private $headerWillPass = false;
 	private $executed = false;
 	private $removeHttpCache = false;
-	private $bodyHandled = false;
 	
 	private $responseHeaders = [];
 	private $requestHeaders = [];
@@ -38,7 +37,7 @@ class CurlFetch {
 		if (!empty($uriInfo['query'])) {
 			$this->bodyTmpPath .= crc32($uriInfo['query']) . '_';
 		}
-		$this->bodyTmpPath .= basename($uriInfo['path']);
+		$this->bodyTmpPath .= rand(100000, 999999) . '_' . basename($uriInfo['path']);
 		$this->bodyTmpPath = normalizePath($this->bodyTmpPath);
 //		curl_setopt($ch, CURLOPT_SSLVERSION, 3);
 		
@@ -84,53 +83,10 @@ class CurlFetch {
 	}
 	
 	public function passResponseHeaders() {
-		if ($this->headerHandled) {
+		if ($this->headerWillPass) {
 			throw new Error('passResponseHeaders already called');
 		}
-		$this->headerHandled = true;
-	}
-	
-	private function _downloadResponseBody() {
-//		 systemLogInfo('download ' . $this->getUrl());
-//		 systemLogInfo('download file to ' . $this->bodyTmpPath);
-		
-		$d = dirname($this->bodyTmpPath);
-		if (!file_exists($d)) {
-//			systemLogInfo('Create directory: ' . $d);
-			mkdir($d);
-		}
-		
-		$this->bodyTmpFp = fopen($this->bodyTmpPath, 'w');
-		
-		curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, false);
-		curl_setopt($this->ch, CURLOPT_FILE, $this->bodyTmpFp);
-		
-		curl_exec($this->ch);
-		
-		fclose($this->bodyTmpFp);
-		$this->bodyTmpFp = null;
-	}
-	
-	public function passResponseBody() {
-		if ($this->bodyHandled) {
-			throw new Error('passResponseBody already called');
-		}
-		$this->bodyHandled = true;
-		$headerSent = false;
-		curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, true);
-		
-		curl_setopt($this->ch, CURLOPT_WRITEFUNCTION, function ($ch, $data) use (&$headerSent) {
-			if (!$headerSent) {
-				http_response_code(curl_getinfo($ch, CURLINFO_RESPONSE_CODE));
-				if ($this->headerHandled) {
-					$this->doPassHeader();
-				}
-				$headerSent = true;
-			}
-			echo $data;
-			return strlen($data);
-		}); // callad every CURLOPT_BUFFERSIZE
-		
+		$this->headerWillPass = true;
 	}
 	
 	private function doPassHeader() {
@@ -141,9 +97,10 @@ class CurlFetch {
 				continue;
 			} elseif (in_array($name, $ignoredHeaders)) {
 				foreach ($values as $index => $value) {
-					header("X-Ignore-Header: $name = $value");
+					header("X-Ignore-Header: $name = $value", false);
 				}
 			} elseif ($this->removeHttpCache && in_array($name, $httpCacheHeaders)) {
+				header("X-Remove-Header: $name = " . implode(',', $values), false);
 				continue;
 			} else {
 				foreach ($values as $index => $value) {
@@ -196,16 +153,31 @@ class CurlFetch {
 		
 		curl_setopt($this->ch, CURLOPT_HTTPHEADER, $this->requestHeaders);
 		
-		if ($this->bodyHandled) {
-			curl_exec($this->ch);
-		} else {
-			$this->_downloadResponseBody();
+		// systemLogInfo('download ' . $this->getUrl());
+		systemLogDebug('download file to ' . $this->bodyTmpPath);
+		
+		$d = dirname($this->bodyTmpPath);
+		if (!file_exists($d)) {
+			// systemLogDebug('Create directory: ' . $d);
+			mkdir($d);
 		}
 		
-		if ($this->headerHandled) {
-			http_response_code(curl_getinfo($this->ch, CURLINFO_RESPONSE_CODE));
-		} elseif (!$this->bodyHandled) {
-			http_response_code(200);
+		$this->bodyTmpFp = fopen($this->bodyTmpPath, 'w');
+		
+		curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, false);
+		curl_setopt($this->ch, CURLOPT_FILE, $this->bodyTmpFp);
+		
+		curl_exec($this->ch);
+		
+		fclose($this->bodyTmpFp);
+		systemLogDebug('download file complete to ' . $this->bodyTmpPath);
+		$this->bodyTmpFp = null;
+		
+		$code = curl_getinfo($this->ch, CURLINFO_HTTP_CODE);
+		if ($code !== 200) {
+			systemLogError('CURL Fail: HTTP Code = ' . $code);
+			curl_close($this->ch);
+			return false;
 		}
 		
 		if (curl_errno($this->ch)) {
@@ -215,7 +187,17 @@ class CurlFetch {
 		}
 		curl_close($this->ch);
 		
-		if ($this->headerHandled && !$this->bodyHandled) {
+		if (!file_exists($this->bodyTmpPath)) {
+			systemLogError('CURL Fail: Body file did not exists after download.');
+			return false;
+		}
+		$fsize = filesize($this->bodyTmpPath);
+		if ($fsize === 0) {
+			systemLogError('CURL Fail: Body file is empty.');
+			return false;
+		}
+		
+		if ($this->headerWillPass) {
 			$this->doPassHeader();
 		}
 		
@@ -230,11 +212,9 @@ class CurlFetch {
 	 * @return string
 	 */
 	public function getResponseBody() {
-		if ($this->bodyHandled) {
-			throw new Error('Response body has already been passed to browser, cannot get it.');
-		}
+		
 		if (!file_exists($this->bodyTmpPath)) {
-			throw new Error('Response body not write to disk.');
+			fatalError('Response body not write to disk. (It should at ' . $this->bodyTmpPath . ')');
 		}
 		
 		return file_get_contents($this->bodyTmpPath);
