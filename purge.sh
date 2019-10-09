@@ -29,21 +29,21 @@ urldecode(){
 }
 
 if [[ $# -gt 0 ]] && [[ "$*" != "-n" ]]; then
-	LINES=( "$@" )
+	INPUT_LINES=( "$@" )
 else
-	LINES=( $( awk '{print $3}' | sort -u ) )
+	INPUT_LINES=( $( awk '{print $3}' | sort -u ) )
 fi
 
 if echo -- "$*" | grep -q -- "-n" ; then
-	for LINE in "${LINES[@]}" ; do
+	for LINE in "${INPUT_LINES[@]}" ; do
+		[[ "-n" == "$LINE" ]] && continue
 		P="$(nxcacheof "$LINE")"
 		[[ -e "$P" ]] && echo "$P"
 	done
 	exit 0
 fi
 
-
-for LINE in "${LINES[@]}" ; do
+for LINE in "${INPUT_LINES[@]}" ; do
 	each_line ${LINE} # "$(echo $LINE | urldecode)"
 done
 

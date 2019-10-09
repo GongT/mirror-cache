@@ -11,6 +11,7 @@ class CurlFetch {
 	private $headerWillPass = false;
 	private $executed = false;
 	private $removeHttpCache = false;
+	public $lastStatus = 500;
 	
 	private $responseHeaders = [];
 	private $requestHeaders = [];
@@ -174,6 +175,7 @@ class CurlFetch {
 		$this->bodyTmpFp = null;
 		
 		$code = curl_getinfo($this->ch, CURLINFO_HTTP_CODE);
+		$this->lastStatus = $code;
 		if ($code !== 200) {
 			systemLogError('CURL Fail: HTTP Code = ' . $code);
 			curl_close($this->ch);

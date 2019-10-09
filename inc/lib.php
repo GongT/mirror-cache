@@ -43,7 +43,9 @@ function addNeverCacheHeader() {
  * @param $why string
  */
 function fatalError($why) {
-	http_response_code(500);
+	if (http_response_code()<400) {
+		http_response_code(500);
+	}
 	addNeverCacheHeader();
 	$req = isset($_SERVER['PATH_INFO']) ? $_SERVER['PATH_INFO'] : $_SERVER['QUERY_STRING'];
 	echo "<h1>$why</h1>$req";
